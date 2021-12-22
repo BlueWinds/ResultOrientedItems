@@ -64,6 +64,27 @@ namespace ResultOrientedItems
         }
     }
 
+    [HarmonyPatch(typeof(SimGameState), "AddItemStat", new Type[] {typeof(string), typeof(string), typeof(bool)})]
+    public static class SimGameState_AddItemStat2_Patch {
+        public static bool Prefix(SimGameState __instance, string id, string type, bool damaged) {
+            try {
+                if (ROI.itemEvents.ContainsKey(id)) {
+                    ItemEvent itemEvent = ROI.itemEvents[id];
+
+                    ROI.modLog.Info?.Write($"Found itemEvent for {id}. AllowInInventory: {itemEvent.AllowInInventory}");
+                    if (__instance.MeetsRequirements(itemEvent.Requirements)) {
+                        ROI.modLog.Info?.Write($"Applying Results");
+                        SimGameState.ApplySimGameEventResult(itemEvent.Results.ToList());
+                    }
+                    return itemEvent.AllowInInventory;
+                }
+            } catch (Exception e) {
+                ROI.modLog.Error?.Write(e);
+            }
+            return true;
+        }
+    }
+
     [HarmonyPatch(typeof(SimGameState), "SetSimGameStat")]
     public static class SimGameState_SetSimGameStat_Patch {
         public static void Prefix(ref SimGameStat stat) {
