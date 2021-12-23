@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using BattleTech;
+using BattleTech.UI;
 using Harmony;
 using IRBTModUtils.Logging;
 using HBS;
@@ -40,6 +41,17 @@ namespace ResultOrientedItems
 
             var harmony = HarmonyInstance.Create("blue.winds.ResultOrientedItems");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+        }
+    }
+
+    public static class ROI_Util
+    {
+        public static List<ItemCollectionResult> PendingCollectionResults = new List<ItemCollectionResult>();
+
+        public static void ProcessResult(ItemCollectionResult result)
+        {
+            ROI_Util.PendingCollectionResults.Add(result);
+            ROI.modLog.Info?.Write($"Adding results from {result?.itemCollectionID} to pending collection. Count is now {PendingCollectionResults.Count}.");
         }
     }
 
@@ -101,6 +113,42 @@ namespace ResultOrientedItems
             } catch (Exception e) {
                 ROI.modLog.Error?.Write(e);
             }
+        }
+    }
+
+    [HarmonyPatch(typeof(SimGameInterruptManager), "AddInterrupt")]
+    public static class SimGameInterruptManager_Entry_AddInterrupt
+    {
+        public static void Prefix(SimGameInterruptManager __instance, SimGameInterruptManager.Entry entry, List<SimGameInterruptManager.Entry> ___popups, bool playImmediate = true)
+        {
+            if (entry is SimGameInterruptManager.RewardsPopupEntry)
+            {
+                if (___popups.All(x => x.type != SimGameInterruptManager.InterruptType.RewardsPopup))
+                {
+                    return;
+                }
+
+                var collectionId = entry.parameters[0] as string;
+                __instance.Sim.RequestItem<ItemCollectionDef>(collectionId, null, BattleTechResourceType.ItemCollectionDef);
+                __instance.Sim.DataManager.ItemCollectionDefs.TryGet(collectionId, out var collection);
+                var result = __instance.Sim.ItemCollectionResultGen.GenerateItemCollection(collection, 0, new Action<ItemCollectionResult>(ROI_Util.ProcessResult), null);
+                ROI.modLog.Info?.Write($"Created temporary result from {result?.itemCollectionID} and {result?.items.Count} items");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(RewardsPopup), "OnItemsCollected")]
+    public static class RewardsPopup_OnItemsCollected
+    {
+        public static void Prefix(RewardsPopup __instance, ItemCollectionResult result)
+        {
+            foreach (var pendingCollection in ROI_Util.PendingCollectionResults)
+            {
+                result.items.AddRange(pendingCollection.items);
+                ROI.modLog.Info?.Write($"Added result from state {pendingCollection.itemCollectionID}_{pendingCollection.GUID} to result from {result.itemCollectionID}_{result.GUID}");
+            }
+
+            ROI_Util.PendingCollectionResults = new List<ItemCollectionResult>();
         }
     }
 }
