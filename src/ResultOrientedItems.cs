@@ -119,21 +119,36 @@ namespace ResultOrientedItems
     [HarmonyPatch(typeof(SimGameInterruptManager), "AddInterrupt")]
     public static class SimGameInterruptManager_Entry_AddInterrupt
     {
-        public static void Prefix(SimGameInterruptManager __instance, SimGameInterruptManager.Entry entry, List<SimGameInterruptManager.Entry> ___popups, bool playImmediate = true)
+        public static bool Prefix(SimGameInterruptManager __instance, SimGameInterruptManager.Entry entry, List<SimGameInterruptManager.Entry> ___popups, SimGameInterruptManager.Entry ___curPopup, bool playImmediate = true)
         {
-            if (entry is SimGameInterruptManager.RewardsPopupEntry)
+            try
             {
-                if (___popups.All(x => x.type != SimGameInterruptManager.InterruptType.RewardsPopup))
+                if (entry is SimGameInterruptManager.RewardsPopupEntry rewardsEntry)
                 {
-                    return;
+                    if (___popups.All(x => x.type != SimGameInterruptManager.InterruptType.RewardsPopup) && ___curPopup.type != SimGameInterruptManager.InterruptType.RewardsPopup)
+                    {
+                        return true;
+                    }
+
+                    var collectionId = rewardsEntry.parameters[0] as string;
+                    __instance.Sim.RequestItem<ItemCollectionDef>(collectionId, null,
+                        BattleTechResourceType.ItemCollectionDef);
+                    __instance.Sim.DataManager.ItemCollectionDefs.TryGet(collectionId, out var collection);
+                    var result = __instance.Sim.ItemCollectionResultGen.GenerateItemCollection(collection, 0,
+                        new Action<ItemCollectionResult>(ROI_Util.ProcessResult), null);
+                    ROI.modLog.Info?.Write(
+                        $"Created temporary result from {result?.itemCollectionID} and {result?.items.Count} items");
+                    return false;
                 }
 
-                var collectionId = entry.parameters[0] as string;
-                __instance.Sim.RequestItem<ItemCollectionDef>(collectionId, null, BattleTechResourceType.ItemCollectionDef);
-                __instance.Sim.DataManager.ItemCollectionDefs.TryGet(collectionId, out var collection);
-                var result = __instance.Sim.ItemCollectionResultGen.GenerateItemCollection(collection, 0, new Action<ItemCollectionResult>(ROI_Util.ProcessResult), null);
-                ROI.modLog.Info?.Write($"Created temporary result from {result?.itemCollectionID} and {result?.items.Count} items");
+                return true;
             }
+            catch (Exception e)
+            {
+                ROI.modLog.Error?.Write(e);
+            }
+
+            return true;
         }
     }
 
@@ -142,13 +157,21 @@ namespace ResultOrientedItems
     {
         public static void Prefix(RewardsPopup __instance, ItemCollectionResult result)
         {
-            foreach (var pendingCollection in ROI_Util.PendingCollectionResults)
+            try
             {
-                result.items.AddRange(pendingCollection.items);
-                ROI.modLog.Info?.Write($"Added result from state {pendingCollection.itemCollectionID}_{pendingCollection.GUID} to result from {result.itemCollectionID}_{result.GUID}");
-            }
+                foreach (var pendingCollection in ROI_Util.PendingCollectionResults)
+                {
+                    result.items.AddRange(pendingCollection.items);
+                    ROI.modLog.Info?.Write(
+                        $"Added result from state {pendingCollection.itemCollectionID}_{pendingCollection.GUID} to result from {result.itemCollectionID}_{result.GUID}");
+                }
 
-            ROI_Util.PendingCollectionResults = new List<ItemCollectionResult>();
+                ROI_Util.PendingCollectionResults = new List<ItemCollectionResult>();
+            }
+            catch (Exception e)
+            {
+                ROI.modLog.Error?.Write(e);
+            }
         }
     }
 }
