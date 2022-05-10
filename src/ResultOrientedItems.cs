@@ -80,8 +80,7 @@ namespace ResultOrientedItems
                         }
                     }
                 }
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 ROI.modLog.Error?.Write(e);
             }
         }
@@ -174,8 +173,7 @@ namespace ResultOrientedItems
                 }
 
                 return true;
-            }
-            catch (Exception e)
+            } catch (Exception e)
             {
                 ROI.modLog.Error?.Write(e);
             }
@@ -199,8 +197,7 @@ namespace ResultOrientedItems
                 }
 
                 ROI_Util.PendingCollectionResults = new List<ItemCollectionResult>();
-            }
-            catch (Exception e)
+            } catch (Exception e)
             {
                 ROI.modLog.Error?.Write(e);
             }
