@@ -50,8 +50,7 @@ namespace ResultOrientedItems
 
         public static List<ItemCollectionResult> PendingCollectionResults = new List<ItemCollectionResult>();
 
-        public static void ProcessResult(ItemCollectionResult result)
-        {
+        public static void ProcessResult(ItemCollectionResult result) {
             ROI_Util.PendingCollectionResults.Add(result);
             ROI.modLog.Info?.Write($"Adding results from {result?.itemCollectionID} to pending collection. Count is now {PendingCollectionResults.Count}.");
         }
@@ -60,20 +59,15 @@ namespace ResultOrientedItems
     [HarmonyPatch(typeof(SimGameState), "ApplySimGameEventResult", new Type[] {typeof(SimGameEventResult), typeof(List<object>), typeof(SimGameEventTracker)})]
     public static class SimGameState_ApplySimGameEventResult {
         public static void Postfix(SimGameEventResult result) {
-            try
-            {
+            try {
                 SimGameState sim = UnityGameInstance.BattleTechGame.Simulation;
-                if (result.Scope == EventScope.Company && result.AddedTags != null)
-                {
-                    foreach (string tag in result.AddedTags.ToList())
-                    {
-                        if (tag == ROI_Util.RefreshShopsTag)
-                        {
+                if (result.Scope == EventScope.Company && result.AddedTags != null) {
+                    foreach (string tag in result.AddedTags.ToList()) {
+                        if (tag == ROI_Util.RefreshShopsTag) {
                             sim.CurSystem.RefreshShops();
                             sim.CompanyTags.Remove(tag);
                         }
-                        else if (tag == ROI_Util.RefreshContractsTag)
-                        {
+                        else if (tag == ROI_Util.RefreshContractsTag) {
                             sim.CurSystem.ResetContracts();
                             sim.GeneratePotentialContracts(true, null, sim.CurSystem, false);
                             sim.CompanyTags.Remove(tag);
@@ -148,19 +142,13 @@ namespace ResultOrientedItems
     }
 
     [HarmonyPatch(typeof(SimGameInterruptManager), "AddInterrupt")]
-    public static class SimGameInterruptManager_Entry_AddInterrupt
-    {
-        public static bool Prefix(SimGameInterruptManager __instance, SimGameInterruptManager.Entry entry, List<SimGameInterruptManager.Entry> ___popups, SimGameInterruptManager.Entry ___curPopup, bool playImmediate = true)
-        {
-            try
-            {
-                if (entry is SimGameInterruptManager.RewardsPopupEntry rewardsEntry)
-                {
-                    if (___popups.All(x => x.type != SimGameInterruptManager.InterruptType.RewardsPopup) && ___curPopup.type != SimGameInterruptManager.InterruptType.RewardsPopup)
-                    {
+    public static class SimGameInterruptManager_Entry_AddInterrupt {
+        public static bool Prefix(SimGameInterruptManager __instance, SimGameInterruptManager.Entry entry, List<SimGameInterruptManager.Entry> ___popups, SimGameInterruptManager.Entry ___curPopup, bool playImmediate = true) {
+            try {
+                if (entry is SimGameInterruptManager.RewardsPopupEntry rewardsEntry) {
+                    if (___popups.All(x => x.type != SimGameInterruptManager.InterruptType.RewardsPopup) && ___curPopup.type != SimGameInterruptManager.InterruptType.RewardsPopup) {
                         return true;
                     }
-
                     var collectionId = rewardsEntry.parameters[0] as string;
                     __instance.Sim.RequestItem<ItemCollectionDef>(collectionId, null,
                         BattleTechResourceType.ItemCollectionDef);
@@ -173,11 +161,9 @@ namespace ResultOrientedItems
                 }
 
                 return true;
-            } catch (Exception e)
-            {
+            } catch (Exception e) {
                 ROI.modLog.Error?.Write(e);
             }
-
             return true;
         }
     }
@@ -185,20 +171,16 @@ namespace ResultOrientedItems
     [HarmonyPatch(typeof(RewardsPopup), "OnItemsCollected")]
     public static class RewardsPopup_OnItemsCollected
     {
-        public static void Prefix(RewardsPopup __instance, ItemCollectionResult result)
-        {
-            try
-            {
-                foreach (var pendingCollection in ROI_Util.PendingCollectionResults)
-                {
+        public static void Prefix(RewardsPopup __instance, ItemCollectionResult result) {
+            try {
+                foreach (var pendingCollection in ROI_Util.PendingCollectionResults) {
                     result.items.AddRange(pendingCollection.items);
                     ROI.modLog.Info?.Write(
                         $"Added result from state {pendingCollection.itemCollectionID}_{pendingCollection.GUID} to result from {result.itemCollectionID}_{result.GUID}");
                 }
 
                 ROI_Util.PendingCollectionResults = new List<ItemCollectionResult>();
-            } catch (Exception e)
-            {
+            } catch (Exception e) {
                 ROI.modLog.Error?.Write(e);
             }
         }
