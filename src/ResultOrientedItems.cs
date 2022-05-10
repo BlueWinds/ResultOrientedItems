@@ -44,8 +44,7 @@ namespace ResultOrientedItems
         }
     }
 
-    public static class ROI_Util
-    {
+    public static class ROI_Util {
         public const string RefreshShopsTag = "ROI_refresh_shops";
         public const string RefreshContractsTag = "ROI_refresh_contracts";
 
@@ -63,10 +62,10 @@ namespace ResultOrientedItems
         public static void Postfix(SimGameEventResult result) {
             try
             {
-                var sim = UnityGameInstance.BattleTechGame.Simulation;
+                SimGameState sim = UnityGameInstance.BattleTechGame.Simulation;
                 if (result.Scope == EventScope.Company && result.AddedTags != null)
                 {
-                    foreach (var tag in result.AddedTags.ToList())
+                    foreach (string tag in result.AddedTags.ToList())
                     {
                         if (tag == ROI_Util.RefreshShopsTag)
                         {
