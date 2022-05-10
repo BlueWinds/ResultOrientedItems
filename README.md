@@ -2,6 +2,10 @@ ResultOrientedItems (ROI) is a mod for HBS's Battletech computer game. It was in
 
 ROI does very little on its own - it is a dll designed to open up possibilities for other content creators to work with. It comes with a few sample items and events, but these are far from the only use.
 
+## Forcing shops and/or contracts to refresh
+
+If an event result adds the company tag `ROI_refresh_shops`, the current starsystem's shops will refresh. If an event result adds the company tag `ROI_refresh_contracts`, the current starsytstem's contracts will refresh. Neither tag is actually added to the CompanyTags.
+
 ## Triggering ItemEvents
 Whenever an item (UpgradeDef, JumpJetDef, WeaponDef, etc) would be added to the player's inventory, ROI checks to see if any `itemEvents.Item` matches. If one is found, the `Requirements` are checked, and if all are found to match, the the `Results` are applied.
 
