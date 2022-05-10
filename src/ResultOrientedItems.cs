@@ -46,12 +46,45 @@ namespace ResultOrientedItems
 
     public static class ROI_Util
     {
+        public const string RefreshShopsTag = "ROI_refresh_shops";
+        public const string RefreshContractsTag = "ROI_refresh_contracts";
+
         public static List<ItemCollectionResult> PendingCollectionResults = new List<ItemCollectionResult>();
 
         public static void ProcessResult(ItemCollectionResult result)
         {
             ROI_Util.PendingCollectionResults.Add(result);
             ROI.modLog.Info?.Write($"Adding results from {result?.itemCollectionID} to pending collection. Count is now {PendingCollectionResults.Count}.");
+        }
+    }
+
+    [HarmonyPatch(typeof(SimGameState), "ApplySimGameEventResult", new Type[] {typeof(SimGameEventResult), typeof(List<object>), typeof(SimGameEventTracker)})]
+    public static class SimGameState_ApplySimGameEventResult {
+        public static void Postfix(SimGameEventResult result) {
+            try
+            {
+                var sim = UnityGameInstance.BattleTechGame.Simulation;
+                if (result.Scope == EventScope.Company && result.AddedTags != null)
+                {
+                    foreach (var tag in result.AddedTags.ToList())
+                    {
+                        if (tag == ROI_Util.RefreshShopsTag)
+                        {
+                            sim.CurSystem.RefreshShops();
+                            sim.CompanyTags.Remove(tag);
+                        }
+                        else if (tag == ROI_Util.RefreshContractsTag)
+                        {
+                            sim.CurSystem.ResetContracts();
+                            sim.GeneratePotentialContracts(true, null, sim.CurSystem, false);
+                            sim.CompanyTags.Remove(tag);
+                        }
+                    }
+                }
+            }
+            catch (Exception e) {
+                ROI.modLog.Error?.Write(e);
+            }
         }
     }
 
