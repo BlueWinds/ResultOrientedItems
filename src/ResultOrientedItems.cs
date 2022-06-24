@@ -5,6 +5,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using BattleTech;
+using BattleTech.UI;
 using Harmony;
 using IRBTModUtils.Logging;
 using HBS;
@@ -40,6 +41,42 @@ namespace ResultOrientedItems
 
             var harmony = HarmonyInstance.Create("blue.winds.ResultOrientedItems");
             harmony.PatchAll(Assembly.GetExecutingAssembly());
+        }
+    }
+
+    public static class ROI_Util {
+        public const string RefreshShopsTag = "ROI_refresh_shops";
+        public const string RefreshContractsTag = "ROI_refresh_contracts";
+
+        public static List<ItemCollectionResult> PendingCollectionResults = new List<ItemCollectionResult>();
+
+        public static void ProcessResult(ItemCollectionResult result) {
+            ROI_Util.PendingCollectionResults.Add(result);
+            ROI.modLog.Info?.Write($"Adding results from {result?.itemCollectionID} to pending collection. Count is now {PendingCollectionResults.Count}.");
+        }
+    }
+
+    [HarmonyPatch(typeof(SimGameState), "ApplySimGameEventResult", new Type[] {typeof(SimGameEventResult), typeof(List<object>), typeof(SimGameEventTracker)})]
+    public static class SimGameState_ApplySimGameEventResult {
+        public static void Postfix(SimGameEventResult result) {
+            try {
+                SimGameState sim = UnityGameInstance.BattleTechGame.Simulation;
+                if (result.Scope == EventScope.Company && result.AddedTags != null) {
+                    foreach (string tag in result.AddedTags.ToList()) {
+                        if (tag == ROI_Util.RefreshShopsTag) {
+                            sim.CurSystem.RefreshShops();
+                            sim.CompanyTags.Remove(tag);
+                        }
+                        else if (tag == ROI_Util.RefreshContractsTag) {
+                            sim.CurSystem.ResetContracts();
+                            sim.GeneratePotentialContracts(true, null, sim.CurSystem, false);
+                            sim.CompanyTags.Remove(tag);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                ROI.modLog.Error?.Write(e);
+            }
         }
     }
 
@@ -98,6 +135,51 @@ namespace ResultOrientedItems
                     stat.name = $"Reputation.{owner.Name}";
                     ROI.modLog.Info?.Write($"Changed Reputation.Owner to {stat.name} (DoesGainReputation: {owner.DoesGainReputation}, value: {stat.value})");
                 }
+            } catch (Exception e) {
+                ROI.modLog.Error?.Write(e);
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(SimGameInterruptManager), "AddInterrupt")]
+    public static class SimGameInterruptManager_Entry_AddInterrupt {
+        public static bool Prefix(SimGameInterruptManager __instance, SimGameInterruptManager.Entry entry, List<SimGameInterruptManager.Entry> ___popups, SimGameInterruptManager.Entry ___curPopup, bool playImmediate = true) {
+            try {
+                if (entry is SimGameInterruptManager.RewardsPopupEntry rewardsEntry) {
+                    if (___popups.All(x => x.type != SimGameInterruptManager.InterruptType.RewardsPopup) && ___curPopup.type != SimGameInterruptManager.InterruptType.RewardsPopup) {
+                        return true;
+                    }
+                    var collectionId = rewardsEntry.parameters[0] as string;
+                    __instance.Sim.RequestItem<ItemCollectionDef>(collectionId, null,
+                        BattleTechResourceType.ItemCollectionDef);
+                    __instance.Sim.DataManager.ItemCollectionDefs.TryGet(collectionId, out var collection);
+                    var result = __instance.Sim.ItemCollectionResultGen.GenerateItemCollection(collection, 0,
+                        new Action<ItemCollectionResult>(ROI_Util.ProcessResult), null);
+                    ROI.modLog.Info?.Write(
+                        $"Created temporary result from {result?.itemCollectionID} and {result?.items.Count} items");
+                    return false;
+                }
+
+                return true;
+            } catch (Exception e) {
+                ROI.modLog.Error?.Write(e);
+            }
+            return true;
+        }
+    }
+
+    [HarmonyPatch(typeof(RewardsPopup), "OnItemsCollected")]
+    public static class RewardsPopup_OnItemsCollected
+    {
+        public static void Prefix(RewardsPopup __instance, ItemCollectionResult result) {
+            try {
+                foreach (var pendingCollection in ROI_Util.PendingCollectionResults) {
+                    result.items.AddRange(pendingCollection.items);
+                    ROI.modLog.Info?.Write(
+                        $"Added result from state {pendingCollection.itemCollectionID}_{pendingCollection.GUID} to result from {result.itemCollectionID}_{result.GUID}");
+                }
+
+                ROI_Util.PendingCollectionResults = new List<ItemCollectionResult>();
             } catch (Exception e) {
                 ROI.modLog.Error?.Write(e);
             }
