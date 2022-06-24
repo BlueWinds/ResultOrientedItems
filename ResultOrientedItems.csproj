@@ -79,7 +79,7 @@
   </ItemGroup>
   <Target Name="AfterBuild">
     <Copy
-      SourceFiles="$(TargetPath)"
+      SourceFiles="$(TargetPath);LICENSE;README.md"
       DestinationFolder="$(BTPATH)/Mods/ResultOrientedItems/"
       OverwriteReadOnlyFiles="true"
       SkipUnchangedFiles="false"
