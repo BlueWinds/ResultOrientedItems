@@ -1,6 +1,7 @@
 {
   "Item": "Gear_Bribe_Pirates",
   "AllowInInventory": false,
+  "TriggerOnlyOnce": false,
   "Requirements": [
     {
       "Scope": "Company",

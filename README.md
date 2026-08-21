@@ -9,6 +9,8 @@ Whenever an item (UpgradeDef, JumpJetDef, WeaponDef, etc) would be added to the 
 
 If the ItemEvent's `AllowInInventory` is false, then the item disappears without even entering the player's possession. If true, they get it as normal.
 
+If the ItemEvent's `TriggerOnlyOnce` is true, the item's `Results` will be applied only a single time, even if multiple copies of the item are recieved at the same time.
+
 That's it.
 
 ## Additional options for Results
