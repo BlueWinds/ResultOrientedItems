@@ -15,6 +15,7 @@ namespace ResultOrientedItems
     public class ItemEvent {
         public string Item = null;
         public bool AllowInInventory = false;
+        public bool TriggerOnlyOnce = false;
         public RequirementDef[] Requirements;
         public SimGameEventResult[] Results;
     }
@@ -77,6 +78,19 @@ namespace ResultOrientedItems
 
                     ROI.modLog.Info?.Write($"Found itemEvent for {id}. AllowInInventory: {itemEvent.AllowInInventory}");
                     if (__instance.MeetsRequirements(itemEvent.Requirements)) {
+                        if (itemEvent.TriggerOnlyOnce)
+                        {
+                            string effectTag = "ROI_effect_" + id;
+                            if (__instance.CompanyTags.Contains(effectTag))
+                            {
+                                ROI.modLog.Info?.Write($"Skipping {id} since it has already triggered and is marked as TriggerOnlyOnce");
+                                return itemEvent.AllowInInventory;
+                            }
+                            else
+                            {
+                                __instance.CompanyTags.Add(effectTag);
+                            }
+                        }
                         ROI.modLog.Info?.Write($"Applying Results");
                         SimGameState.ApplySimGameEventResult(itemEvent.Results.ToList());
                     }
@@ -98,6 +112,19 @@ namespace ResultOrientedItems
 
                     ROI.modLog.Info?.Write($"Found itemEvent for {id}. AllowInInventory: {itemEvent.AllowInInventory}");
                     if (__instance.MeetsRequirements(itemEvent.Requirements)) {
+                        if (itemEvent.TriggerOnlyOnce)
+                        {
+                            string effectTag = "ROI_effect_" + id;
+                            if (__instance.CompanyTags.Contains(effectTag))
+                            {
+                                ROI.modLog.Info?.Write($"Skipping {id} since it has already triggered and is marked as TriggerOnlyOnce");
+                                return itemEvent.AllowInInventory;
+                            }
+                            else
+                            {
+                                __instance.CompanyTags.Add(effectTag);
+                            }
+                        }
                         ROI.modLog.Info?.Write($"Applying Results");
                         SimGameState.ApplySimGameEventResult(itemEvent.Results.ToList());
                     }
